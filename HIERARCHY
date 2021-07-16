@@ -1,0 +1,306 @@
+#!/usr/bin/perl
+
+# Author: Guy Morin
+
+$ITERATION = 0;
+$LEVEL = 0;
+&find_modules(@ARGV);
+
+sub find_modules
+{
+local (@ARRAY) = @_;
+local($FILE,$MODULE,$module,$PATH,$EXTENTION,$STRING1,$QBLANKS,$BLANKS,$TMPOUT) = '';
+local($RANDOM_NUMBER,$FOUND1,$TMPOUTFILE1,$TMPOUTFILE2) = '';
+local(@INSTANCES,$CLEAN_FILE,$INSTANCE,$NAME,$NEXT_FILE) = '';
+local($FILE,$i,$j,$OUT5,$OUT1) = '';
+local(@OUTPUTVAR) = '';
+local(@FILE_MODULES) = '';
+local($MORE_MODULE) = '';
+local($CURRENT_FILE) = '';
+local($INFILE1) = '';
+local($INFILE2) = '';
+local($INFILE3) = '';
+local($INFILE4) = '';
+local($OUTFILE1) = '';
+local($OUTFILE2) = '';
+local($OUTFILE3) = '';
+local($LOOP0) = '';
+local($LOOP1) = '';
+local($LOOP2) = '';
+
+#$* = 0;
+$/ = "\n";
+
+if ( $#ARRAY == 1 )
+ {
+  $FILE = $ARRAY[0];
+  $MODULE = $ARRAY[1];
+  $module = $MODULE;
+  if ( $module =~ /[A-Z]/ ) { $module =~ tr/A-Z/a-z/; }
+  else { $module =~ tr/a-z/A-Z/; }
+  }
+elsif ( $#ARRAY == 0 )
+ {
+  $FILE = $ARRAY[0];
+  $MODULE = $FILE;
+  $MODULE =~ s/(.*\/)?(\w+)(\..*)*/$2/g;
+  $module = $MODULE;
+  if ( $module =~ /[A-Z]/ ) { $module =~ tr/A-Z/a-z/; }
+  else { $module =~ tr/a-z/A-Z/; }
+  }
+else
+ {
+  die "Supply a filename <blockname>\n";
+  }
+
+$CURRENT_FILE = $FILE;
+$EXTENTION = $FILE;
+$EXTENTION =~ s/(.*\/)?(\w+)(\..*)*/$3/g;
+$PATH = $FILE;
+$PATH =~ s/(.*\/)?(\w+)(\..*)*/$1/g;
+
+$STRING1 = "$MODULE";
+$QBLANKS = length($STRING1);
+#$BLANKS = ' ' x $QBLANKS;
+
+if ( $ITERATION == 0 ){ print "$MODULE\n"; }
+$ITERATION = $ITERATION + 1;
+
+$TMPOUT = "/tmp/hierarchy.tmp";
+# $TMPOUT = "/users/gmorin/hierarchy.tmp";
+$RANDOM_NUMBER = 0;
+$FOUND1 = 0;
+while ( $FOUND1 == 0 )
+{
+ if ( -e "${TMPOUT}${RANDOM_NUMBER}" ) { $RANDOM_NUMBER = $RANDOM_NUMBER + 1; }
+ else { $FOUND1 = 1; }
+ }
+$TMPOUTFILE1 = "${TMPOUT}${RANDOM_NUMBER}";
+
+#$* = 0;
+$/ = "\n";
+open (INFILE1,"$FILE") || die "Cannot open $FILE\n";
+open (OUTFILE1,">$TMPOUTFILE1") || die "Error in trying to open output file\n";
+while (<INFILE1>)
+{
+ s/(\/\/).*//g;
+ s/^\s*$//g;
+ s/\s\s+/ /g;
+ s/^\s+//g;
+ s/\s+$/\n/g;
+ print OUTFILE1"$_";
+ }
+close(OUTFILE1);
+close(INFILE1);
+
+$RANDOM_NUMBER = 0;
+$FOUND1 = 0;
+while ( $FOUND1 == 0 )
+{
+ if ( -e "${TMPOUT}${RANDOM_NUMBER}" ) { $RANDOM_NUMBER = $RANDOM_NUMBER + 1; }
+ else { $FOUND1 = 1; }
+ }
+$TMPOUTFILE2 = "${TMPOUT}${RANDOM_NUMBER}";
+
+#$* = 1;
+$/ = "*/";
+open (INFILE2,"$TMPOUTFILE1") || die "Cannot open $FILE\n";
+open (OUTFILE2,">$TMPOUTFILE2") || die "Error in trying to open output file\n";
+while (<INFILE2>)
+{
+ if ( /\/\*/ )
+  {
+   s/(\/\*)(.|\n)*(\*\/)//mg;
+   }
+ elsif ( /\*\// )
+  {
+   }
+  print OUTFILE2"$_";
+ }
+close(OUTFILE2);
+close(INFILE2);
+#$* = 0;
+$/ = "\n";
+
+`rm -f $TMPOUTFILE1`;
+
+$RANDOM_NUMBER = 0;
+$FOUND1 = 0;
+while ( $FOUND1 == 0 )
+{
+ if ( -e "${TMPOUT}${RANDOM_NUMBER}" ) { $RANDOM_NUMBER = $RANDOM_NUMBER + 1; }
+ else { $FOUND1 = 1; }
+ }
+$TMPOUTFILE3 = "${TMPOUT}${RANDOM_NUMBER}";
+
+#$* = 1;
+$/ = ";";
+$FOUND_MODULE = 0;
+$INSTANCENUMBER = 0;
+@FILE_MODULES  = '';
+open (INFILE3,"$TMPOUTFILE2") || die "Cannot open this file\n";
+open (OUTFILE3,">$TMPOUTFILE3") || die "Error in trying to open output file\n";
+LOOP0: while (<INFILE3>)
+{
+
+ if ( /[\s\n]*module[\s\n]+$MODULE\b/m )
+  {
+   $FOUND_MODULE = 1;
+   }
+ elsif ( ($FOUND_MODULE == 1) && ($_ =~ /^\s*endmodule(\s|\n)*/m ) )
+  {
+   print OUTFILE3 "$_";
+   $FOUND_MODULE = 0;
+   }
+ elsif ($MODULE =~ /XXXXXXXX/ )
+  {
+   print OUTFILE3 "$_";
+   }
+
+ if ($FOUND_MODULE == 1) { print OUTFILE3 "$_";}
+
+ next unless ( /module/ );
+
+
+
+ if ( /[\s\n]*module[\s\n]+(\w+)\b/m )
+ {
+  $MORE_MODULE = $1;
+  if ( "$MORE_MODULE" eq "$MODULE" ) {next LOOP0;} 
+   for ( $i = 0; $i <= $#FILE_MODULES; $i ++ )
+     {
+      if ( $MORE_MODULE eq $FILE_MODULES[$i] ) {next LOOP0;} 
+      }
+
+     if ($MORE_MODULE ne '')
+     {
+      $FILE_MODULES[$INSTANCENUMBER] = $MORE_MODULE;
+      $INSTANCENUMBER = $INSTANCENUMBER + 1;
+      }
+     next LOOP0;
+  }
+ }
+close(OUTFILE3);
+close(INFILE3);
+
+
+`rm -f $TMPOUTFILE2`;
+
+
+
+
+
+
+
+
+@INSTANCES = '';
+@FILE_INSTANCES = '';
+#$* = 1;
+$/ = ";";
+open (INFILE4,"$TMPOUTFILE3") || die "Cannot open file\n";
+$INSTANCENUMBER = 0;
+$FILE_INSTANCENUMBER = 0;
+LOOP1: while (<INFILE4>)
+{
+#                     (\#\s*\(\s*\w+(,\s*\w+)*\)[\s\n]*)?
+
+ #if ( $_ =~ /[\s\n\W]*\w+[\s\n]+\w+[\s\n]*\(/ms )
+ if ( $_ =~ /[\s\n\W]*\w+[\s\n]+\w+[\s\n]*\([\s\n]*\./m )
+  {
+   ($INSTANCE,$NAME) = /[\s\n\W]*(\w+)[\s\n]+(\w+)[\s\n]*\(/m;
+   if ( $INSTANCE =~ /\b(module|begin|if|else|elseif|end|case|endcase|define|timescale|display|strobe|parameter|always|always_ff|always_comb|generate|endgenerate|posedge|negedge|for|logic|localparam|int|genvar|ifdef|\@|\`|1|\s+)\b$/m ) {next LOOP1;}
+   if ( $NAME =~ /\b(module|begin|if|else|elseif|end|case|endcase|define|timescale|display|strobe|parameter|always|always_ff|always_comb|generate|endgenerate|posedge|negedge|for|logic|localparam|int|genvar|ifdef|\@|\`|ps|\s+)\b$/m ) {next LOOP1;}
+   for ( $i = 0; $i <= $#INSTANCES; $i ++ )
+     {
+      if ( $INSTANCE eq $INSTANCES[$i] ) {next LOOP1;}
+      }
+     if ( $INSTANCE ne '' )
+     {
+      $INSTANCES[$INSTANCENUMBER] = $INSTANCE;
+      $INSTANCENUMBER = $INSTANCENUMBER + 1;
+      }
+   }
+ #elsif ( $_ =~ /[\s\n\W]*\w+[\s\n]*\#[\s\n]*\(.*\)[\s\n]*\w+[\s\n]*\(/ms )
+ elsif ( $_ =~ /[\s\n\W]*\w+[\s\n]*\#[\s\n]*\(.*?\)[\s\n]*\w+[\s\n]*\(/ms )
+     {
+      ($INSTANCE,$NAME) = /[\s\n\W]*(\w+)[\s\n]*\#[\s\n]*\(.*?\)[\s\n]*(\w+)[\s\n]*\(/ms;
+       if ( $INSTANCE =~ /\b(module|begin|if|else|elseif|end|case|endcase|define|timescale|display|strobe|parameter|always|always_ff|always_comb|generate|endgenerate|posedge|negedge|for|logic|localparam|int|genvar|ifdef|\@|\`|\s+)\b/m ) {next LOOP1;}
+       for ( $i = 0; $i <= $#INSTANCES; $i ++ )
+         {
+          if ( $INSTANCE eq $INSTANCES[$i] ) {next LOOP1;}
+          }
+       if ( $INSTANCE ne '' )
+        {
+         $INSTANCES[$INSTANCENUMBER] = $INSTANCE;
+         $INSTANCENUMBER = $INSTANCENUMBER + 1;
+         }
+     }
+ elsif ( $_ =~ /include[\s\n\W]+\"(\S+)\"/m )
+     {
+      ($FILE_INSTANCE) = /include[\s\n\W]+\"(\S+)\"/m;
+       for ( $i = 0; $i <= $#FILE_INSTANCES; $i ++ )
+         {
+          if ( $FILE_INSTANCE eq $FILE_INSTANCES[$i] ) {next LOOP1;}
+          }
+       if ( $FILE_INSTANCE ne '' )
+        {
+         $FILE_INSTANCES[$FILE_INSTANCENUMBER] = $FILE_INSTANCE;
+         $FILE_INSTANCENUMBER = $FILE_INSTANCENUMBER + 1;
+         }
+     }
+}
+close (INFILE4);
+
+`rm -f $TMPOUTFILE3`;
+
+#$LEvel = $lEVEL + $QBLANKS;
+$LEVEL = $LEVEL + 1;
+if ($LEVEL >= 0){$BLANKS = ' ' x ($LEVEL * 10);}
+
+unless (@INSTANCES == '')
+{
+LOOP2: for ( $i = 0; $i <= $#INSTANCES; $i ++ )
+ {
+  $INSTANCE = $INSTANCES[$i];
+  if ( $INSTANCE eq '') {next LOOP2;}
+  $NEXT_FILE = ${PATH}.${INSTANCE}.${EXTENTION};
+  unless ($INSTANCE eq '') {print "$BLANKS$INSTANCE\n";}
+  if ( -e $NEXT_FILE )
+    {
+     &find_modules($NEXT_FILE);
+     }
+  else
+      {
+       for ( $j = 0; $j <= $#FILE_MODULES; $j ++ )
+         {
+          if ( "$INSTANCE" eq "$FILE_MODULES[$j]" )
+            {
+             &find_modules($FILE,$INSTANCE);
+             }
+          }
+       next LOOP2;
+       }
+  }
+ }
+#$LEVEL = $LEVEL - $QBLANKS;
+$LEVEL = $LEVEL - 1;
+
+
+
+unless (@FILE_INSTANCES == '')
+{
+LOOP3: for ( $i = 0; $i <= $#FILE_INSTANCES; $i ++ )
+ {
+  $FILE_INSTANCE = $FILE_INSTANCES[$i];
+  if ( $FILE_INSTANCE eq '') {next LOOP3;}
+  $NEXT_FILE = ${PATH}.${FILE_INSTANCE};
+  if ( -e $NEXT_FILE )
+    {
+     &find_modules($NEXT_FILE,XXXXXXXX);
+     }
+  }
+ }
+
+
+
+}
